@@ -205,3 +205,30 @@ class RandomDropColor(object):
             feat[:, :3] = 0
             # feat[:, :3] = 127.5
         return coord, feat, label
+
+class RandomScaleIntensity(object):
+    def __init__(self, scale=[0.9, 1.1]):
+        self.scale = scale
+
+    def __call__(self, coord, feat, label):
+        scale = np.random.uniform(self.scale[0], self.scale[1])
+        feat[:, 0] *= scale
+        return coord, feat, label
+    
+class RandomDropIntensity(object):
+    def __init__(self, p=0.2):
+        self.p = p
+
+    def __call__(self, coord, feat, label):
+        if np.random.rand() < self.p:
+            feat[:, 0] = 0
+        return coord, feat, label
+    
+class RandomDropReturn(object):
+    def __init__(self, p=0.2):
+        self.p = p
+
+    def __call__(self, coord, feat, label):
+        if np.random.rand() < self.p:
+            feat[:, 1] = 0
+        return coord, feat, label

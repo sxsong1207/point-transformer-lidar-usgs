@@ -19,6 +19,7 @@ from tensorboardX import SummaryWriter
 
 from util import config
 from util.s3dis import S3DIS
+from util.dfc2019 import DFC2019
 from util.common_util import AverageMeter, intersectionAndUnionGPU, find_free_port
 from util.data_util import collate_fn
 from util import transform as t
@@ -79,6 +80,9 @@ def main():
     if args.data_name == 's3dis':
         S3DIS(split='train', data_root=args.data_root, test_area=args.test_area)
         S3DIS(split='val', data_root=args.data_root, test_area=args.test_area)
+    if args.data_name == 'dfc2019':
+        DFC2019(split='train', data_root=args.data_root)
+        DFC2019(split='val', data_root=args.data_root)
     else:
         raise NotImplementedError()
     if args.multiprocessing_distributed:
@@ -162,8 +166,23 @@ def main_worker(gpu, ngpus_per_node, argss):
             if main_process():
                 logger.info("=> no checkpoint found at '{}'".format(args.resume))
 
-    train_transform = t.Compose([t.RandomScale([0.9, 1.1]), t.ChromaticAutoContrast(), t.ChromaticTranslation(), t.ChromaticJitter(), t.HueSaturationTranslation()])
-    train_data = S3DIS(split='train', data_root=args.data_root, test_area=args.test_area, voxel_size=args.voxel_size, voxel_max=args.voxel_max, transform=train_transform, shuffle_index=True, loop=args.loop)
+    if args.data_name == 's3dis':
+        train_transform = t.Compose([t.RandomScale([0.9, 1.1]),
+                                 t.ChromaticAutoContrast(),
+                                 t.ChromaticTranslation(),
+                                 t.ChromaticJitter(),
+                                 t.HueSaturationTranslation()])
+        
+        train_data = S3DIS(split='train', data_root=args.data_root, test_area=args.test_area, voxel_size=args.voxel_size, voxel_max=args.voxel_max, transform=train_transform, shuffle_index=True, loop=args.loop)
+    elif args.data_name == 'dfc2019':
+        train_transform = t.Compose([t.RandomScale([0.8, 1.2]),
+                                     t.RandomRotate([np.deg2rad(5), np.deg2rad(5), np.deg2rad(180)]),
+                                     t.RandomShift([10,10,10]),
+                                     t.RandomJitter(sigma=0.01,clip=1),
+                                     
+                                    ])
+        train_data = DFC2019(split='train', data_root=args.data_root, voxel_size=args.voxel_size, voxel_max=args.voxel_max, transform=train_transform, shuffle_index=True, loop=args.loop)
+        
     if main_process():
             logger.info("train_data samples: '{}'".format(len(train_data)))
     if args.distributed:
@@ -175,7 +194,11 @@ def main_worker(gpu, ngpus_per_node, argss):
     val_loader = None
     if args.evaluate:
         val_transform = None
-        val_data = S3DIS(split='val', data_root=args.data_root, test_area=args.test_area, voxel_size=args.voxel_size, voxel_max=800000, transform=val_transform)
+        if args.data_name == 's3dis':
+            val_data = S3DIS(split='val', data_root=args.data_root, test_area=args.test_area, voxel_size=args.voxel_size, voxel_max=800000, transform=val_transform)
+        elif args.data_name == 'dfc2019':
+            val_data = DFC2019(split='val', data_root=args.data_root, voxel_size=args.voxel_size, voxel_max=800000, transform=val_transform)
+            
         if args.distributed:
             val_sampler = torch.utils.data.distributed.DistributedSampler(val_data)
         else:
