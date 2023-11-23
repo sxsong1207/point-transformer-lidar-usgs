@@ -36,7 +36,7 @@ class DFC2019(Dataset):
         for item in self.data_list:
             if not os.path.exists("/dev/shm/{}".format(item)):
                 data_path = dataset_dir / f"{item}.pkl"
-                pts, label, _ = pickle.load(open(data_path, "rb")) # pts xyzIR: (N, 5), label: (N,)
+                pts, label = pickle.load(open(data_path, "rb"))[:2] # pts xyzIR: (N, 5), label: (N,)
                 data = np.concatenate([pts, label.reshape(-1, 1)], axis=1)
                 sa_create("shm://{}".format(item), data)
                 

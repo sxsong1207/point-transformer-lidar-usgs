@@ -179,7 +179,10 @@ def main_worker(gpu, ngpus_per_node, argss):
                                      t.RandomRotate([np.deg2rad(5), np.deg2rad(5), np.deg2rad(180)]),
                                      t.RandomShift([10,10,10]),
                                      t.RandomJitter(sigma=0.01,clip=1),
-                                     
+                                     t.RandomScaleIntensity([0.3, 3]),
+                                     t.RandomDropIntensity(p=0.1),
+                                     t.RandomDropReturn(p=0.1),
+                                     t.RandomDropXYZ(p=0.2, min_ratio=0.3, max_ratio=0.9),
                                     ])
         train_data = DFC2019(split='train', data_root=args.data_root, voxel_size=args.voxel_size, voxel_max=args.voxel_max, transform=train_transform, shuffle_index=True, loop=args.loop)
         

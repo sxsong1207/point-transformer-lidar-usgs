@@ -24,12 +24,16 @@ np.random.seed(123)
 def get_parser():
     parser = argparse.ArgumentParser(description='PyTorch Point Cloud Semantic Segmentation')
     parser.add_argument('--config', type=str, default='config/s3dis/s3dis_pointtransformer_repro.yaml', help='config file')
+    parser.add_argument('--data_path', type=str, default=None, help='path to dataset *.pkl')
+    parser.add_argument('--data_dir', type=str, default=None, help='dataset name')
     parser.add_argument('opts', help='see config/s3dis/s3dis_pointtransformer_repro.yaml for all options', default=None, nargs=argparse.REMAINDER)
     args = parser.parse_args()
     assert args.config is not None
     cfg = config.load_cfg_from_cfg_file(args.config)
     if args.opts is not None:
         cfg = config.merge_cfg_from_list(cfg, args.opts)
+    cfg['inference_data_path'] = args.data_path
+    cfg['inference_data_dir'] = args.data_dir
     return cfg
 
 
@@ -57,6 +61,10 @@ def main():
         from model.pointtransformer.pointtransformer_seg import pointtransformer_seg_repro as Model
     else:
         raise Exception('architecture not supported yet'.format(args.arch))
+    
+    if args.inference_data_path is None and args.inference_data_dir is None:
+        raise Exception("data_path and data_dir cannot be both None")
+
     model = Model(c=args.fea_dim, k=args.classes).cuda()
     logger.info(model)
     criterion = nn.CrossEntropyLoss(ignore_index=args.ignore_label).cuda()
@@ -74,7 +82,7 @@ def main():
         args.epoch = checkpoint['epoch']
     else:
         raise RuntimeError("=> no checkpoint found at '{}'".format(args.model_path))
-    test(model, criterion, names)
+    inference(model, criterion, names)
 
 
 def data_prepare():
@@ -82,10 +90,12 @@ def data_prepare():
         data_list = sorted(os.listdir(args.data_root))
         data_list = [item[:-4] for item in data_list if 'Area_{}'.format(args.test_area) in item]
     elif args.data_name == 'dfc2019':
-        dataset_dir = Path(args.data_root)
-        val_ids_path = dataset_dir.parent / "val_ids.txt"
-        val_ids_path.exists(), f"{val_ids_path} does not exist"
-        data_list = np.loadtxt(val_ids_path, dtype=str)
+        if args.inference_data_path is not None:
+            args.data_root = Path(args.inference_data_path).parent
+            data_list = [Path(args.inference_data_path).stem]
+        else:
+            args.data_root = Path(args.inference_data_dir)
+            data_list =  sorted([i.stem for i in args.data_root.glob("*.pkl")])
     else:
         raise Exception('dataset not supported yet'.format(args.data_name))
     print("Totally {} samples in val set.".format(len(data_list)))
@@ -101,7 +111,7 @@ def data_load(data_name):
         dataset_dir = Path(args.data_root)
         data_path = dataset_dir / f"{data_name}.pkl"
         pts, label = pickle.load(open(data_path, "rb"))[:2] # pts xyzIR: (N, 5), label: (N,)
-        
+
         coord, feat, label = pts[:, 0:3], pts[:, 3:5], np.array(label).reshape(-1)
         
         intensity_divisor = np.nanpercentile(feat[:, 0], 90)
@@ -131,7 +141,7 @@ def input_normalize(coord, feat):
     return coord, feat
 
 
-def test(model, criterion, names):
+def inference(model, criterion, names):
     logger.info('>>>>>>>>>>>>>>>> Start Evaluation >>>>>>>>>>>>>>>>')
     batch_time = AverageMeter()
     intersection_meter = AverageMeter()
@@ -142,6 +152,7 @@ def test(model, criterion, names):
 
     check_makedirs(args.save_folder)
     pred_save, label_save = [], []
+        
     data_list = data_prepare()
     for idx, item in enumerate(data_list):
         end = time.time()
@@ -188,20 +199,29 @@ def test(model, criterion, names):
                 torch.cuda.empty_cache()
                 pred[idx_part, :] += pred_part
                 logger.info('Test: {}/{}, {}/{}, {}/{}'.format(idx + 1, len(data_list), e_i, len(idx_list), args.voxel_max, idx_part.shape[0]))
-            loss = criterion(pred, torch.LongTensor(label).cuda(non_blocking=True))  # for reference
+            
+            if label is None:
+                loss = np.nan
+            else:
+                loss = criterion(pred, torch.LongTensor(label).cuda(non_blocking=True))  # for reference
             pred = pred.max(1)[1].data.cpu().numpy()
 
-        # calculation 1: add per room predictions
-        intersection, union, target = intersectionAndUnion(pred, label, args.classes, args.ignore_label)
-        intersection_meter.update(intersection)
-        union_meter.update(union)
-        target_meter.update(target)
+        if label is None:
+            accuracy = np.nan
+        else:
+            # calculation 1: add per room predictions
+            intersection, union, target = intersectionAndUnion(pred, label, args.classes, args.ignore_label)
+            intersection_meter.update(intersection)
+            union_meter.update(union)
+            target_meter.update(target)
 
-        accuracy = sum(intersection) / (sum(target) + 1e-10)
+            accuracy = sum(intersection) / (sum(target) + 1e-10)
+            
+        
         batch_time.update(time.time() - end)
         logger.info('Test: [{}/{}]-{} '
                     'Batch {batch_time.val:.3f} ({batch_time.avg:.3f}) '
-                    'Accuracy {accuracy:.4f}.'.format(idx + 1, len(data_list), label.size, batch_time=batch_time, accuracy=accuracy))
+                    'Accuracy {accuracy:.4f}.'.format(idx + 1, len(data_list), pred.size, batch_time=batch_time, accuracy=accuracy))
         pred_save.append(pred); label_save.append(label)
         np.save(pred_save_path, pred); np.save(label_save_path, label)
 
@@ -210,25 +230,26 @@ def test(model, criterion, names):
     with open(os.path.join(args.save_folder, "label.pickle"), 'wb') as handle:
         pickle.dump({'label': label_save}, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-    # calculation 1
-    iou_class = intersection_meter.sum / (union_meter.sum + 1e-10)
-    accuracy_class = intersection_meter.sum / (target_meter.sum + 1e-10)
-    mIoU1 = np.mean(iou_class)
-    mAcc1 = np.mean(accuracy_class)
-    allAcc1 = sum(intersection_meter.sum) / (sum(target_meter.sum) + 1e-10)
+    if label is None:
+        # calculation 1
+        iou_class = intersection_meter.sum / (union_meter.sum + 1e-10)
+        accuracy_class = intersection_meter.sum / (target_meter.sum + 1e-10)
+        mIoU1 = np.mean(iou_class)
+        mAcc1 = np.mean(accuracy_class)
+        allAcc1 = sum(intersection_meter.sum) / (sum(target_meter.sum) + 1e-10)
 
-    # calculation 2
-    intersection, union, target = intersectionAndUnion(np.concatenate(pred_save), np.concatenate(label_save), args.classes, args.ignore_label)
-    iou_class = intersection / (union + 1e-10)
-    accuracy_class = intersection / (target + 1e-10)
-    mIoU = np.mean(iou_class)
-    mAcc = np.mean(accuracy_class)
-    allAcc = sum(intersection) / (sum(target) + 1e-10)
-    logger.info('Val result: mIoU/mAcc/allAcc {:.4f}/{:.4f}/{:.4f}.'.format(mIoU, mAcc, allAcc))
-    logger.info('Val1 result: mIoU/mAcc/allAcc {:.4f}/{:.4f}/{:.4f}.'.format(mIoU1, mAcc1, allAcc1))
+        # calculation 2
+        intersection, union, target = intersectionAndUnion(np.concatenate(pred_save), np.concatenate(label_save), args.classes, args.ignore_label)
+        iou_class = intersection / (union + 1e-10)
+        accuracy_class = intersection / (target + 1e-10)
+        mIoU = np.mean(iou_class)
+        mAcc = np.mean(accuracy_class)
+        allAcc = sum(intersection) / (sum(target) + 1e-10)
+        logger.info('Val result: mIoU/mAcc/allAcc {:.4f}/{:.4f}/{:.4f}.'.format(mIoU, mAcc, allAcc))
+        logger.info('Val1 result: mIoU/mAcc/allAcc {:.4f}/{:.4f}/{:.4f}.'.format(mIoU1, mAcc1, allAcc1))
 
-    for i in range(args.classes):
-        logger.info('Class_{} Result: iou/accuracy {:.4f}/{:.4f}, name: {}.'.format(i, iou_class[i], accuracy_class[i], names[i]))
+        for i in range(args.classes):
+            logger.info('Class_{} Result: iou/accuracy {:.4f}/{:.4f}, name: {}.'.format(i, iou_class[i], accuracy_class[i], names[i]))
     logger.info('<<<<<<<<<<<<<<<<< End Evaluation <<<<<<<<<<<<<<<<<')
 
 

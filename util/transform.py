@@ -232,3 +232,20 @@ class RandomDropReturn(object):
         if np.random.rand() < self.p:
             feat[:, 1] = 0
         return coord, feat, label
+    
+class RandomDropXYZ(object):
+    def __init__(self, p=0.2, min_ratio=0.3, max_ratio=0.9):
+        self.p = p
+        self.min_ratio = min_ratio
+        self.max_ratio = max_ratio
+
+    def __call__(self, coord, feat, label):
+        if np.random.rand() < self.p:
+            drop_ratio = np.random.uniform(self.min_ratio, self.max_ratio)
+            select_mask = np.random.choice(coord.shape[0], int(coord.shape[0] * drop_ratio), replace=False)
+            
+            coord = coord[select_mask]
+            feat = feat[select_mask]
+            label = label[select_mask]
+            
+        return coord, feat, label
