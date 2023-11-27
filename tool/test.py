@@ -81,7 +81,7 @@ def data_prepare():
     if args.data_name == 's3dis':
         data_list = sorted(os.listdir(args.data_root))
         data_list = [item[:-4] for item in data_list if 'Area_{}'.format(args.test_area) in item]
-    elif args.data_name == 'dfc2019':
+    elif args.data_name in ['dfc2019', 'us3d']:
         dataset_dir = Path(args.data_root)
         val_ids_path = dataset_dir.parent / "val_ids.txt"
         val_ids_path.exists(), f"{val_ids_path} does not exist"
@@ -97,7 +97,7 @@ def data_load(data_name):
         data_path = os.path.join(args.data_root, data_name + '.npy')
         data = np.load(data_path)  # xyzrgbl, N*7
         coord, feat, label = data[:, :3], data[:, 3:6], data[:, 6]
-    elif args.data_name == 'dfc2019':
+    elif args.data_name in ['dfc2019', 'us3d']:
         dataset_dir = Path(args.data_root)
         data_path = dataset_dir / f"{data_name}.pkl"
         pts, label = pickle.load(open(data_path, "rb"))[:2] # pts xyzIR: (N, 5), label: (N,)

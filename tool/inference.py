@@ -54,6 +54,7 @@ def main():
     logger = get_logger()
     logger.info(args)
     assert args.classes > 1
+    os.environ["CUDA_VISIBLE_DEVICES"] = ','.join(str(x) for x in args.test_gpu)
     logger.info("=> creating model ...")
     logger.info("Classes: {}".format(args.classes))
 
@@ -89,7 +90,7 @@ def data_prepare():
     if args.data_name == 's3dis':
         data_list = sorted(os.listdir(args.data_root))
         data_list = [item[:-4] for item in data_list if 'Area_{}'.format(args.test_area) in item]
-    elif args.data_name == 'dfc2019':
+    elif args.data_name in ['dfc2019', 'us3d']:
         if args.inference_data_path is not None:
             args.data_root = Path(args.inference_data_path).parent
             data_list = [Path(args.inference_data_path).stem]
@@ -107,7 +108,7 @@ def data_load(data_name):
         data_path = os.path.join(args.data_root, data_name + '.npy')
         data = np.load(data_path)  # xyzrgbl, N*7
         coord, feat, label = data[:, :3], data[:, 3:6], data[:, 6]
-    elif args.data_name == 'dfc2019':
+    elif args.data_name in ['dfc2019', 'us3d']:
         dataset_dir = Path(args.data_root)
         data_path = dataset_dir / f"{data_name}.pkl"
         pts, label = pickle.load(open(data_path, "rb"))[:2] # pts xyzIR: (N, 5), label: (N,)

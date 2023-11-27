@@ -7,7 +7,7 @@ import pickle
 from glob import glob
 
 def write_las(xyz, intensity, return_num, classification, xyz_offset, out_las_path):
-    header = laspy.LasHeader(point_format=0, version="1.2")
+    header = laspy.LasHeader(point_format=6, version="1.4")
     header.offsets = xyz_offset
     header.scales = np.array([0.001, 0.001, 0.001])
 
