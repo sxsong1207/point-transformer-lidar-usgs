@@ -82,8 +82,8 @@ def main():
         S3DIS(split='train', data_root=args.data_root, test_area=args.test_area)
         S3DIS(split='val', data_root=args.data_root, test_area=args.test_area)
     elif args.data_name == 'dfc2019':
-        DFC2019(split='train', data_root=args.data_root)
-        DFC2019(split='val', data_root=args.data_root)
+        US3D(split='train', data_root=args.data_root)
+        US3D(split='val', data_root=args.data_root)
     elif args.data_name == 'us3d':
         US3D(split='train', data_root=args.data_root)
         US3D(split='val', data_root=args.data_root)
@@ -179,16 +179,16 @@ def main_worker(gpu, ngpus_per_node, argss):
         
         train_data = S3DIS(split='train', data_root=args.data_root, test_area=args.test_area, voxel_size=args.voxel_size, voxel_max=args.voxel_max, transform=train_transform, shuffle_index=True, loop=args.loop)
     elif args.data_name == 'dfc2019':
-        train_transform = t.Compose([t.RandomScale([0.8, 1.2]),
+        train_transform = t.Compose([t.RandomScale([0.5, 2.0]),
                                      t.RandomRotate([np.deg2rad(5), np.deg2rad(5), np.deg2rad(180)]),
                                      t.RandomShift([10,10,10]),
                                      t.RandomJitter(sigma=0.01,clip=1),
-                                     t.RandomScaleIntensity([0.3, 3]),
-                                     t.RandomDropIntensity(p=0.1),
-                                     t.RandomDropReturn(p=0.1),
+                                     t.RandomScaleIntensity([0.2, 5]),
+                                     t.RandomDropIntensity(p=0.2),
+                                     t.RandomDropReturn(p=0.2),
                                      t.RandomDropXYZ(p=0.2, min_ratio=0.3, max_ratio=0.9),
                                     ])
-        train_data = DFC2019(split='train', data_root=args.data_root, voxel_size=args.voxel_size, voxel_max=args.voxel_max, transform=train_transform, shuffle_index=True, loop=args.loop)
+        train_data = US3D(split='train', data_root=args.data_root, voxel_size=args.voxel_size, voxel_max=args.voxel_max, transform=train_transform, shuffle_index=True, loop=args.loop)
     elif args.data_name == 'us3d':
         train_transform = t.Compose([t.RandomScale([0.5, 2.0]),
                                      t.RandomRotate([np.deg2rad(5), np.deg2rad(5), np.deg2rad(180)]),
@@ -215,7 +215,7 @@ def main_worker(gpu, ngpus_per_node, argss):
         if args.data_name == 's3dis':
             val_data = S3DIS(split='val', data_root=args.data_root, test_area=args.test_area, voxel_size=args.voxel_size, voxel_max=800000, transform=val_transform)
         elif args.data_name == 'dfc2019':
-            val_data = DFC2019(split='val', data_root=args.data_root, voxel_size=args.voxel_size, voxel_max=800000, transform=val_transform)
+            val_data = US3D(split='val', data_root=args.data_root, voxel_size=args.voxel_size, voxel_max=800000, transform=val_transform)
         elif args.data_name == 'us3d':
             val_data = US3D(split='val', data_root=args.data_root, voxel_size=args.voxel_size, voxel_max=800000, transform=val_transform)
             

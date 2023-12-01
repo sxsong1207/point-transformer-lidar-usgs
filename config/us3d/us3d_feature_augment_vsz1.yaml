@@ -3,9 +3,9 @@ DATA:
   data_root: dataset/us3d/trainval
   classes: 6
   fea_dim: 5
-  voxel_size: 0.5
+  voxel_size: 1
   voxel_max: 80000
-  loop: 30
+  loop: 10
 
 TRAIN:
   arch: pointtransformer_seg_repro
