@@ -72,31 +72,37 @@ def compute_metrics(gt_cls, pred_cls):
     ignore_index = 0
     print(f"Number of points: {len(pred_cls)} vs {len(gt_cls)}")
 
-    intersection, union, target = intersectionAndUnion(
+    intersection, union, output, target = intersectionAndUnion(
         pred_cls, gt_cls, num_classes, ignore_index=ignore_index
     )
 
+    
+    
     labels, num_labels = np.unique(gt_cls, return_counts=True)
 
     print("intersection=", intersection)
     print("union=", union)
+    print("output=", output)
     print("target=", target)
     print("num_labels=", num_labels)
 
     iou_class = intersection / (union + 1e-10)
     accuracy_class = intersection / (target + 1e-10)
+    precision_class = intersection / (output + 1e-10)
+    
     mIoU = np.mean(iou_class)
     mAcc = np.mean(accuracy_class)
+    mPrecision = np.mean(precision_class)
 
     print(f"Number of classes: {num_classes}")
     print(iou_class.shape)
-    print("result: mIoU/mAcc {:.4f}/{:.4f} .".format(mIoU, mAcc))
+    print("result: mIoU/mAcc/mPre {:.4f}/{:.4f}/{:.4f} .".format(mIoU, mAcc, mPrecision))
 
     for i in range(len(labels)):
         print(f"Class {labels[i]}: {num_labels[i]} samples")
         print(
-            "Class_{} Result: iou/accuracy {:.4f}/{:.4f}".format(
-                labels[i], iou_class[i], accuracy_class[i]
+            "Class_{} Result: iou/accuracy/precision {:.4f}/{:.4f}/{:.4f}".format(
+                labels[i], iou_class[i], accuracy_class[i], precision_class[i]
             )
         )
     
@@ -104,6 +110,9 @@ def _main():
     logging.basicConfig(level=logging.INFO)
     parser = _get_parser()
     args = parser.parse_args()
+    if not args.gt or not args.pred:
+        parser.print_help()
+        return 1
     
     assert len(args.gt) == len(args.pred), "Number of gt and pred must be the same"
     

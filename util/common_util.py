@@ -34,8 +34,7 @@ def intersectionAndUnion(output, target, K, ignore_index=255):
     area_output, _ = np.histogram(output, bins=np.arange(K+1))
     area_target, _ = np.histogram(target, bins=np.arange(K+1))
     area_union = area_output + area_target - area_intersection
-    return area_intersection, area_union, area_target
-
+    return area_intersection, area_union, area_output, area_target
 
 def intersectionAndUnionGPU(output, target, K, ignore_index=255):
     # 'K' classes, output and target sizes are N or N * L or N * H * W, each value in range 0 to K - 1.

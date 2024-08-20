@@ -296,7 +296,7 @@ def train(train_loader, model, criterion, optimizer, epoch):
             dist.all_reduce(loss), dist.all_reduce(count)
             n = count.item()
             loss /= n
-        intersection, union, target = intersectionAndUnionGPU(output, target, args.classes, args.ignore_label)
+        intersection, union, _, target = intersectionAndUnionGPU(output, target, args.classes, args.ignore_label)
         if args.multiprocessing_distributed:
             dist.all_reduce(intersection), dist.all_reduce(union), dist.all_reduce(target)
         intersection, union, target = intersection.cpu().numpy(), union.cpu().numpy(), target.cpu().numpy()
@@ -372,7 +372,7 @@ def validate(val_loader, model, criterion):
             n = count.item()
             loss /= n
 
-        intersection, union, target = intersectionAndUnionGPU(output, target, args.classes, args.ignore_label)
+        intersection, union, _, target = intersectionAndUnionGPU(output, target, args.classes, args.ignore_label)
         if args.multiprocessing_distributed:
             dist.all_reduce(intersection), dist.all_reduce(union), dist.all_reduce(target)
         intersection, union, target = intersection.cpu().numpy(), union.cpu().numpy(), target.cpu().numpy()

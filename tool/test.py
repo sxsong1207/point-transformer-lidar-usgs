@@ -192,7 +192,7 @@ def test(model, criterion, names):
             pred = pred.max(1)[1].data.cpu().numpy()
 
         # calculation 1: add per room predictions
-        intersection, union, target = intersectionAndUnion(pred, label, args.classes, args.ignore_label)
+        intersection, union, _, target = intersectionAndUnion(pred, label, args.classes, args.ignore_label)
         intersection_meter.update(intersection)
         union_meter.update(union)
         target_meter.update(target)
@@ -218,7 +218,7 @@ def test(model, criterion, names):
     allAcc1 = sum(intersection_meter.sum) / (sum(target_meter.sum) + 1e-10)
 
     # calculation 2
-    intersection, union, target = intersectionAndUnion(np.concatenate(pred_save), np.concatenate(label_save), args.classes, args.ignore_label)
+    intersection, union, _, target = intersectionAndUnion(np.concatenate(pred_save), np.concatenate(label_save), args.classes, args.ignore_label)
     iou_class = intersection / (union + 1e-10)
     accuracy_class = intersection / (target + 1e-10)
     mIoU = np.mean(iou_class)
