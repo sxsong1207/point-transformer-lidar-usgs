@@ -4,7 +4,8 @@ from pathlib import Path
 from tqdm import tqdm
 from scipy.spatial import cKDTree
 
-from util.common_util import intersectionAndUnion
+# from util.common_util import intersectionAndUnion
+from sklearn.metrics import confusion_matrix
 import logging
 
 logger = logging.getLogger(__name__)
@@ -67,44 +68,72 @@ def extract_aligned_cls(las_1, las_2, tolerance=0.001):
         
     return cls_1, cls_2
 
-def compute_metrics(gt_cls, pred_cls):
-    num_classes = max(gt_cls.max(), pred_cls.max()) + 1
-    ignore_index = 0
+def compute_metrics(gt_cls, pred_cls, num_classes=6, ignore_label=0):
+    valid_mask = gt_cls != ignore_label
+    gt_cls = gt_cls[valid_mask]
+    pred_cls = pred_cls[valid_mask]
+    
+    # Compute confusion matrix
+    conf_matrix = confusion_matrix(gt_cls, pred_cls, labels=np.arange(num_classes))
+    
+    # Initialize variables to store results
+    iou_per_class = np.zeros(num_classes)
+    precision_per_class = np.zeros(num_classes)
+    recall_per_class = np.zeros(num_classes)
+    f1_score_per_class = np.zeros(num_classes)
+    accuracy_per_class = np.zeros(num_classes)
+    
+    # Total accuracy
+    total_accuracy = np.sum(np.diag(conf_matrix)) / np.sum(conf_matrix)
+    
+    for class_id in range(num_classes):
+        true_positive = conf_matrix[class_id, class_id]
+        false_positive = np.sum(conf_matrix[:, class_id]) - true_positive
+        false_negative = np.sum(conf_matrix[class_id, :]) - true_positive
+        true_negative = np.sum(conf_matrix) - (true_positive + false_positive + false_negative)
+        
+        # IoU for the class
+        iou = true_positive / (true_positive + false_positive + false_negative) if (true_positive + false_positive + false_negative) > 0 else 0
+        iou_per_class[class_id] = iou
+        
+        # Precision for the class
+        precision = true_positive / (true_positive + false_positive) if (true_positive + false_positive) > 0 else 0
+        precision_per_class[class_id] = precision
+
+        # Recall for the class
+        recall = true_positive / (true_positive + false_negative) if (true_positive + false_negative) > 0 else 0
+        recall_per_class[class_id] = recall
+        
+        # F1 Score for the class
+        f1_score = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
+        f1_score_per_class[class_id] = f1_score
+        
+        # Accuracy for the class
+        accuracy = (true_positive + true_negative) / np.sum(conf_matrix) if np.sum(conf_matrix) > 0 else 0
+        accuracy_per_class[class_id] = accuracy
+
+    # return iou_per_class, precision_per_class, accuracy_per_class, recall_per_class, f1_score_per_class, total_accuracy
+
     print(f"Number of points: {len(pred_cls)} vs {len(gt_cls)}")
 
-    intersection, union, output, target = intersectionAndUnion(
-        pred_cls, gt_cls, num_classes, ignore_index=ignore_index
-    )
-
     
+    mIoU = np.mean(iou_per_class)
+    mAcc = np.mean(accuracy_per_class)
+    mPrecision = np.mean(precision_per_class)
+    mRecall = np.mean(recall_per_class)
+    mF1 = np.mean(f1_score_per_class)
     
-    labels, num_labels = np.unique(gt_cls, return_counts=True)
-
-    print("intersection=", intersection)
-    print("union=", union)
-    print("output=", output)
-    print("target=", target)
-    print("num_labels=", num_labels)
-
-    iou_class = intersection / (union + 1e-10)
-    accuracy_class = intersection / (target + 1e-10)
-    precision_class = intersection / (output + 1e-10)
-    
-    mIoU = np.mean(iou_class)
-    mAcc = np.mean(accuracy_class)
-    mPrecision = np.mean(precision_class)
 
     print(f"Number of classes: {num_classes}")
-    print(iou_class.shape)
-    print("result: mIoU/mAcc/mPre {:.4f}/{:.4f}/{:.4f} .".format(mIoU, mAcc, mPrecision))
+    print("result: mIoU/mAcc/mPre/mRecall/mF1 {:.4f}/{:.4f}/{:.4f}/{:.4f}/{:.4f} .".format(mIoU, mAcc, mPrecision, mRecall, mF1))
 
-    for i in range(len(labels)):
-        print(f"Class {labels[i]}: {num_labels[i]} samples")
+    for i in range(num_classes):
         print(
-            "Class_{} Result: iou/accuracy/precision {:.4f}/{:.4f}/{:.4f}".format(
-                labels[i], iou_class[i], accuracy_class[i], precision_class[i]
+            "Class_{} Result: iou/accuracy/precision/recall/F1 {:.4f}/{:.4f}/{:.4f}/{:.4f}/{:.4f}".format(
+                i, iou_per_class[i], accuracy_per_class[i], precision_per_class[i], recall_per_class[i], f1_score_per_class[i]
             )
         )
+    print("Total Accuracy: {:.4f}".format(total_accuracy))
     
 def _main():
     logging.basicConfig(level=logging.INFO)

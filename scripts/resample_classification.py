@@ -29,6 +29,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Remap classification")
     parser.add_argument("input", type=str, help="Path to the input las file")
     parser.add_argument("label_source", type=str, help="Path to the label source las file")
+    parser.add_argument("--only_unclassified", action="store_true", help="Only remap unclassified points")
     parser.add_argument("output", type=str, help="Path to the output las file")
 
     args = parser.parse_args()
@@ -43,8 +44,13 @@ if __name__ == '__main__':
 
     sampled_classification = reference_las.classification[idx]
 
-    mask = input_las.classification > 1
-    input_las.classification[mask] = sampled_classification[mask]
+    if args.only_unclassified:
+        logger.info("Remap only unclassified points")
+        mask = input_las.classification > 1
+        input_las.classification[mask] = sampled_classification[mask]
+    else:
+        logger.info("Remap all points")
+        input_las.classification = sampled_classification
 
     input_las.write(str(args.output))
     

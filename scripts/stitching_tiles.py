@@ -27,7 +27,7 @@ def _get_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("--in_pkl_dir", type=Path, required=True)
     parser.add_argument("--in_label_dir", type=Path, required=True)
-    parser.add_argument("--in_label_suffix", type=str, default=None)
+    parser.add_argument("--in_label_suffix", type=str, default='pred')
     parser.add_argument("--out_las_path", type=Path, required=True)
     return parser
   
@@ -50,15 +50,17 @@ def _main():
     data_arr = []
     classification_arr = []
     for in_pkl_path in tqdm(in_pkl_paths,desc="Reading pkl"):
-      data, label, xyz_offset = pickle.load(open(in_pkl_path, "rb"))[:3]  
+      data, label, xyz_offset = pickle.load(open(in_pkl_path, "rb"))[:3]
       data = data.astype(np.float64)
+      if len(data) == 0:
+        continue
       data[:,:3] += xyz_offset
       data_arr.append(data)
       
       if in_label_suffix is None:
         classification_arr.append(label)
       else:
-        in_label_path = sorted(list(in_label_dir.glob(f"{Path(in_pkl_path).stem}_*_{in_label_suffix}.npy")))[0]
+        in_label_path = sorted(list(in_label_dir.glob(f"{Path(in_pkl_path).stem}*_{in_label_suffix}.npy")))[0]
         classification = np.load(in_label_path)
         classification_arr.append(classification)
 

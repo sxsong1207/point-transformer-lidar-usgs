@@ -163,7 +163,12 @@ def inference(model, criterion, names):
             logger.info('{}/{}: {}, loaded pred and label.'.format(idx + 1, len(data_list), item))
             pred, label = np.load(pred_save_path), np.load(label_save_path)
         else:
-            coord, feat, label, idx_data = data_load(item)
+            try:
+                coord, feat, label, idx_data = data_load(item)
+            except Exception as e:
+                logger.error(f"{idx+1}/{len(data_list)}: {item} failed to load data, {e}")
+                continue
+            
             pred = torch.zeros((label.size, args.classes)).cuda()
             idx_size = len(idx_data)
             idx_list, coord_list, feat_list, offset_list  = [], [], [], []

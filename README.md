@@ -1,3 +1,8 @@
+# Usage
+
+```tool/inference.sh us3d feature_augment_vsz1  /research/GDA/Temp_for_SS/20241028_USGS_MeadowHeath/full_cloud.laz``
+
+
 # Point Transformer
 This repository reproduces [Point Transformer](https://arxiv.org/abs/2012.09164). \
 The codebase is provided by the first author of [Point Transformer](https://arxiv.org/abs/2012.09164).
