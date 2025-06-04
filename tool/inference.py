@@ -115,7 +115,7 @@ def data_load(data_name):
 
         coord, feat, label = pts[:, 0:3], pts[:, 3:5], np.array(label).reshape(-1)
         
-        intensity_divisor = np.nanpercentile(feat[:, 0], 90)
+        intensity_divisor = np.nanpercentile(feat[:, 0], 90) + 1e-6
         return_divisor = 3.
         feat /= np.array([intensity_divisor, return_divisor]).reshape(-1, 2).astype(np.float32)
         

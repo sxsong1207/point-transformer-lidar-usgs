@@ -1,0 +1,9 @@
+Unclassified
+Unknown
+Ground
+Low Vegetation
+High Vegetation
+Building
+Water
+Road
+Bridge Deck

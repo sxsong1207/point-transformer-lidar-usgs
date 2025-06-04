@@ -200,7 +200,7 @@ def main_worker(gpu, ngpus_per_node, argss):
                                      t.RandomDropXYZ(p=0.2, min_ratio=0.3, max_ratio=0.9),
                                     ])
         train_data = US3D(split='train', data_root=args.data_root, voxel_size=args.voxel_size, voxel_max=args.voxel_max, transform=train_transform, shuffle_index=True, loop=args.loop)
-        
+
     if main_process():
             logger.info("train_data samples: '{}'".format(len(train_data)))
     if args.distributed:
@@ -296,7 +296,7 @@ def train(train_loader, model, criterion, optimizer, epoch):
             dist.all_reduce(loss), dist.all_reduce(count)
             n = count.item()
             loss /= n
-        intersection, union, _, target = intersectionAndUnionGPU(output, target, args.classes, args.ignore_label)
+        intersection, union, target = intersectionAndUnionGPU(output, target, args.classes, args.ignore_label)
         if args.multiprocessing_distributed:
             dist.all_reduce(intersection), dist.all_reduce(union), dist.all_reduce(target)
         intersection, union, target = intersection.cpu().numpy(), union.cpu().numpy(), target.cpu().numpy()
@@ -372,7 +372,7 @@ def validate(val_loader, model, criterion):
             n = count.item()
             loss /= n
 
-        intersection, union, _, target = intersectionAndUnionGPU(output, target, args.classes, args.ignore_label)
+        intersection, union,  target = intersectionAndUnionGPU(output, target, args.classes, args.ignore_label)
         if args.multiprocessing_distributed:
             dist.all_reduce(intersection), dist.all_reduce(union), dist.all_reduce(target)
         intersection, union, target = intersection.cpu().numpy(), union.cpu().numpy(), target.cpu().numpy()

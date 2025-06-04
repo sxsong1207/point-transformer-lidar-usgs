@@ -20,11 +20,12 @@ US3D_CLASS_NAMES ={
 
 US3D_IDX = {
     0:0,
-    2:1,
-    5:2,
-    6:3,
-    9:4,
-    17:5}
+    2:1, # Ground
+    5:2, # High Vegetation
+    6:3, # Building
+    9:4, # Water
+    17:5 # Bridge Deck
+    }
 
 US3D_IDX_2_US3D_CLASSID = {v:k for k,v in US3D_IDX.items()}
 

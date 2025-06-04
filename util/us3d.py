@@ -45,7 +45,7 @@ class US3D(Dataset):
         data = SA.attach("shm://{}".format(self.data_list[data_idx])).copy()
         coord, feat, label = data[:, 0:3], data[:, 3:5], data[:, 5]
         
-        intensity_divisor = np.nanpercentile(feat[:, 0], 90)
+        intensity_divisor = np.nanpercentile(feat[:, 0], 90) + 1e-6
         return_divisor = 3.
         feat /= np.array([intensity_divisor, return_divisor]).reshape(-1, 2).astype(np.float32)
         
